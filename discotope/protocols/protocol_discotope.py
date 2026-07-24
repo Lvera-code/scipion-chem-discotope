@@ -36,6 +36,7 @@ from pathlib import Path
 import pandas as pd
 from pwchem.objects import Sequence, SequenceROI, SetOfSequenceROIs
 from pwem.protocols import EMProtocol
+from pyworkflow.object import Float
 from pyworkflow.protocol import params
 
 from .. import Plugin as discotopePlugin
@@ -185,6 +186,8 @@ class ProtDiscoTopePrediction(EMProtocol):
             roiSeq = Sequence(sequence=row.sequence, name=roiId, id=roiId,
                                description='DiscoTope-3.0 conformational epitope region')
             newRoi = SequenceROI(sequence=parentSeq, seqROI=roiSeq, roiIdx=row.start, roiIdx2=row.end)
+            newRoi._meanScore = Float(row.mean_score)
+            newRoi._maxScore = Float(row.max_score)
             outROIs.append(newRoi)
 
         if len(outROIs) > 0:

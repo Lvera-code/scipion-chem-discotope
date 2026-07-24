@@ -17,6 +17,8 @@ class TestDiscoTopePrediction(BaseTest):
     # mapping (9aa window, max 2 below-threshold residues, min length 9) --
     # not estimated.
     EXPECTED = (241, 249, 'RVQACPILF')
+    EXPECTED_MEAN_SCORE = 1.481464
+    EXPECTED_MAX_SCORE = 3.68022
 
     @classmethod
     def setUpClass(cls):
@@ -38,3 +40,5 @@ class TestDiscoTopePrediction(BaseTest):
 
         roi = list(outROIs)[0]
         self.assertEqual((roi.getROIIdx(), roi.getROIIdx2(), roi.getROISequence()), self.EXPECTED)
+        self.assertAlmostEqual(roi._meanScore.get(), self.EXPECTED_MEAN_SCORE, places=4)
+        self.assertAlmostEqual(roi._maxScore.get(), self.EXPECTED_MAX_SCORE, places=4)
