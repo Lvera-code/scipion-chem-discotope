@@ -1,0 +1,4 @@
+include README.rst
+include requirements.txt
+recursive-include discotope *.conf
+recursive-include tests_data *.pdb
