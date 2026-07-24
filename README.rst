@@ -20,6 +20,11 @@ installed automatically: the bundled XGBoost weights need manual
 unpacking and ESM-IF1 needs a one-time cached weight download, a setup
 sequence Scipion's conda installer cannot express as a single step.
 
+Output ROIs expose ``_meanScore``/``_maxScore`` (project-wide convention
+formalized 2026-07-24, see ``scipion-chem-epitope-construct``): any
+B-cell prediction protocol must expose these so the construct-assembly
+protocol can rank candidates consistently across tools.
+
 ================================
 Manual setup
 ================================
