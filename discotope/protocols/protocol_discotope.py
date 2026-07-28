@@ -40,7 +40,7 @@ from pyworkflow.object import Float
 from pyworkflow.protocol import params
 
 from .. import Plugin as discotopePlugin
-from ..constants import DEFAULT_THRESHOLD, DISCOTOPE_DIC, RAW_RESIDUE_COLUMN, RAW_SCORE_COLUMN
+from ..constants import DEFAULT_THRESHOLD, RAW_RESIDUE_COLUMN, RAW_SCORE_COLUMN
 from ..utils.epitope_mapping import extract_epitope_regions
 from ..utils.exceptions import DiscoTopeExecutionError
 
@@ -117,27 +117,13 @@ class ProtDiscoTopePrediction(EMProtocol):
         resultDir.mkdir(parents=True, exist_ok=True)
 
         strucType = self.getEnumText('strucType')
-        cmd = [
-            discotopePlugin.getVar(DISCOTOPE_DIC['python_bin']),
-            discotopePlugin.getMainScriptPath(),
-            '--pdb_or_zip_file', str(pdbPath.resolve()),
-            '--out_dir', str(resultDir.resolve()),
-            '--struc_type', strucType,
-            '--models_dir', discotopePlugin.getVar(DISCOTOPE_DIC['models_dir']),
-        ]
-
-        # runJob's 'env' kwarg expects a pyworkflow Environ object, not a
-        # plain dict (AttributeError: 'dict' object has no attribute
-        # 'getPrepend' otherwise, confirmed by actually running this).
-        # Setting os.environ directly is simpler and correct here: a
-        # subprocess launched with no explicit 'env' override inherits the
-        # current process's environment as-is.
-        weightsCacheDir = discotopePlugin.getVar(DISCOTOPE_DIC['weights_cache_dir'])
-        if weightsCacheDir:
-            os.makedirs(weightsCacheDir, exist_ok=True)
-            os.environ['TORCH_HOME'] = str(Path(weightsCacheDir).resolve())
-
-        self.runJob(cmd[0], ' '.join(str(c) for c in cmd[1:]))
+        args = (
+            f'--pdb_or_zip_file {pdbPath.resolve()} '
+            f'--out_dir {resultDir.resolve()} '
+            f'--struc_type {strucType} '
+            f'--models_dir {discotopePlugin.getModelsDir()}'
+        )
+        discotopePlugin.runDiscoTope(self, args)
 
         csvFiles = sorted(Path(p) for p in glob.glob(str(resultDir / '**' / '*_discotope3.csv'), recursive=True))
         if not csvFiles:

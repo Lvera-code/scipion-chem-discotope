@@ -15,36 +15,21 @@ publish reference thresholds with expected recall for this normalized
 column (~0.40 "low", ~0.90 "moderate"/default, ~1.51 "higher").
 
 DiscoTope-3.0 is installable directly via git+pip (no academic-request
-form, unlike BepiPred/NetMHCpan/NetMHCIIpan/SignalP) but is **not**
-installed automatically: the bundled XGBoost weights need manual
-unpacking and ESM-IF1 needs a one-time cached weight download, a setup
-sequence Scipion's conda installer cannot express as a single step.
+form, unlike BepiPred/NetMHCpan/NetMHCIIpan/SignalP), so it is installed
+automatically: ``scipion3 installb DiscoTope`` clones the upstream repo,
+installs it into a dedicated conda env (Python 3.14, per upstream's own
+README), unzips its bundled XGBoost ensemble weights (``models.zip``,
+committed in the upstream repo), and pre-warms the ESM-IF1 weight cache
+by calling ``discotope3.esm.pretrained.esm_if1_gvp4_t16_142M_UR50()``
+once with ``TORCH_HOME`` pointed at a dedicated cache dir -- the same
+public, unauthenticated download (``dl.fbaipublicfiles.com``) a first
+protocol run would trigger anyway, just done at install time instead. No
+manual setup or ``scipion.conf`` variables needed.
 
 Output ROIs expose ``_meanScore``/``_maxScore`` (project-wide convention
 formalized 2026-07-24, see ``scipion-chem-epitope-construct``): any
 B-cell prediction protocol must expose these so the construct-assembly
 protocol can rank candidates consistently across tools.
-
-================================
-Manual setup
-================================
-
-.. code-block::
-
-      git clone https://github.com/Magnushhoie/DiscoTope-3.0
-      python3 -m venv .venv-discotope
-      .venv-discotope/bin/pip install -r DiscoTope-3.0/requirements.txt
-      .venv-discotope/bin/pip install DiscoTope-3.0
-      cd DiscoTope-3.0 && unzip models.zip
-
-Then, in ``scipion.conf``, set:
-
-.. code-block::
-
-      DISCOTOPE_PYTHON_BIN = <path to .venv-discotope's python>
-      DISCOTOPE_INSTALL_PATH = <path to the DiscoTope-3.0 clone>
-      DISCOTOPE_MODELS_DIR = <path to DiscoTope-3.0/models>
-      DISCOTOPE_WEIGHTS_CACHE_DIR = <path to cache ESM-IF1 weights, outside the repo>
 
 ===================
 Install this plugin
@@ -57,3 +42,4 @@ Install this plugin
             git clone https://github.com/Lvera-code/scipion-chem-discotope.git
             cd scipion-chem-discotope
             scipion3 installp -p . --devel
+            scipion3 installb DiscoTope

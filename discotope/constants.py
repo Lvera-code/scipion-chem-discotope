@@ -25,20 +25,26 @@
 
 DEFAULT_VERSION = '3.0'
 
-# DiscoTope-3.0 (DTU Health Tech, Creative Commons free academic use) is
-# installable directly via git+pip (no academic-request form, unlike
-# BepiPred/NetMHCpan/NetMHCIIpan/SignalP) -- still not auto-installed here,
-# since it also needs the bundled XGBoost ensemble weights (models.zip)
-# unpacked manually and a one-time ESM-IF1 weight download cached outside
-# the repo, a setup sequence Scipion's conda installer cannot express
-# cleanly as a single defineBinaries step.
+# DiscoTope-3.0 (DTU Health Tech, CC BY-NC 4.0 free academic use) is
+# installed automatically: it is installable directly via git+pip (no
+# academic-request form, unlike BepiPred/NetMHCpan/NetMHCIIpan/SignalP).
+# The setup sequence -- clone, pip install, unzip the bundled XGBoost
+# ensemble weights (models.zip, committed in the upstream repo), and
+# pre-warm the ESM-IF1 weight cache -- is fully scripted in defineBinaries,
+# confirmed against the real upstream source
+# (github.com/Magnushhoie/DiscoTope-3.0): models.zip ships in the repo
+# root, and ESM-IF1 weights are fetched by
+# discotope3.esm.pretrained.esm_if1_gvp4_t16_142M_UR50() via
+# torch.hub.load_state_dict_from_url (a public, unauthenticated download
+# from dl.fbaipublicfiles.com, respecting TORCH_HOME) -- calling that
+# function once during install, with TORCH_HOME pointed at our own cache
+# dir, downloads and caches it exactly like a real first protocol run
+# would, without having to hardcode/guess the checkpoint URL(s) by hand.
 DISCOTOPE_DIC = {
     'name': 'DiscoTope',
     'version': DEFAULT_VERSION,
-    'python_bin': 'DISCOTOPE_PYTHON_BIN',
-    'install_path': 'DISCOTOPE_INSTALL_PATH',
-    'models_dir': 'DISCOTOPE_MODELS_DIR',
-    'weights_cache_dir': 'DISCOTOPE_WEIGHTS_CACHE_DIR',
+    'home': 'DISCOTOPE_HOME',
+    'activation': 'DISCOTOPE_ACTIVATION_CMD',
 }
 
 READ_URL = 'https://github.com/Lvera-code/scipion-chem-discotope'
@@ -46,11 +52,10 @@ UPSTREAM_URL = 'https://github.com/Magnushhoie/DiscoTope-3.0'
 
 NOINSTALL_WARNING = (
     'Installation could not be completed because the local DiscoTope-3.0 '
-    f'installation has not been found. Clone {UPSTREAM_URL} manually, build a '
-    'dedicated venv, unzip its bundled models.zip, and set '
-    'DISCOTOPE_PYTHON_BIN/DISCOTOPE_INSTALL_PATH/DISCOTOPE_MODELS_DIR in '
-    f'scipion.conf. Please check the scipion-chem-discotope README file for '
-    f'more details: {READ_URL}'
+    "installation has not been found or its conda environment could not be "
+    "activated. Run 'scipion3 installb DiscoTope' to install it "
+    f'automatically. Please check the scipion-chem-discotope README file '
+    f'for more details: {READ_URL}'
 )
 
 # ADR: 'calibrated_score', not the raw 'DiscoTope-3.0_score' -- the raw

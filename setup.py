@@ -19,7 +19,7 @@ with open('requirements.txt') as f:
 
 setup(
     name='scipion-chem-discotope',
-    version='0.1.0',
+    version='0.2.0',
     description='Scipion framework plugin for structure-based B-cell epitope prediction with DiscoTope-3.0',
     long_description=long_description,
     url='https://github.com/Lvera-code/scipion-chem-discotope',

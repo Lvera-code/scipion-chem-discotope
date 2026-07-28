@@ -27,34 +27,64 @@ B-cell epitope prediction using a local DiscoTope-3.0 installation.
 """
 
 import os
+import subprocess
+
+from scipion.install.funcs import InstallHelper
 
 from pwchem import Plugin as pwchemPlugin
 
-from .constants import DISCOTOPE_DIC, NOINSTALL_WARNING
+from .constants import DISCOTOPE_DIC, NOINSTALL_WARNING, UPSTREAM_URL
 
 _references = ['Hoie2024']
 
 
 class Plugin(pwchemPlugin):
-    """DiscoTope-3.0 is never installed automatically: not a license
-    restriction (Creative Commons, free academic use, installable directly
-    via git+pip), but the bundled XGBoost weights (models.zip) need manual
-    unpacking and ESM-IF1 needs a one-time cached weight download -- a
-    setup sequence Scipion's conda installer cannot express as a single
-    step. See ``validateInstallation`` for what is checked and
-    ``README.rst`` for the manual setup steps."""
+    """DiscoTope-3.0 is installable directly via git and pip (CC BY-NC 4.0
+    license, free for academic use, no academic-request form required):
+    installed automatically by cloning the upstream repository, unpacking
+    its bundled XGBoost ensemble weights (models.zip), and pre-warming its
+    ESM-IF1 weight cache during installation."""
 
     @classmethod
     def _defineVariables(cls):
-        cls._defineVar(DISCOTOPE_DIC['python_bin'], '')
-        cls._defineVar(DISCOTOPE_DIC['install_path'], '')
-        cls._defineVar(DISCOTOPE_DIC['models_dir'], '')
-        cls._defineVar(DISCOTOPE_DIC['weights_cache_dir'], '')
+        cls._defineEmVar(DISCOTOPE_DIC['home'], cls.getEnvName(DISCOTOPE_DIC))
+        cls._defineVar(DISCOTOPE_DIC['activation'], cls.getEnvActivationCommand(DISCOTOPE_DIC))
 
     @classmethod
     def defineBinaries(cls, env):
-        """No-op: see class docstring."""
-        pass
+        cls.addDiscoTopePackage(env)
+
+    @classmethod
+    def addDiscoTopePackage(cls, env, default=True):
+        # Python is pinned to 3.14, per the upstream project's own README
+        # (github.com/Magnushhoie/DiscoTope-3.0#installation-guide), not
+        # the stale 'Python :: 3.9' classifier in its setup.py.
+        home = cls.getVar(DISCOTOPE_DIC['home'])
+        weightsCacheDir = cls.getWeightsCacheDir()
+        installedMarker = f"{DISCOTOPE_DIC['name']}_installed"
+
+        installer = InstallHelper(DISCOTOPE_DIC['name'], packageHome=home,
+                                  packageVersion=DISCOTOPE_DIC['version'])
+
+        installer.getCondaEnvCommand(
+            DISCOTOPE_DIC['name'], binaryVersion=DISCOTOPE_DIC['version'], pythonVersion='3.14'
+        ).addCommand(
+            f"git clone --depth 1 {UPSTREAM_URL} {home}",
+            'DISCOTOPE_CLONED'
+        ).addCommand(
+            f"{cls.getEnvActivationCommand(DISCOTOPE_DIC)} && "
+            f"cd {home} && pip install -r requirements.txt && pip install . && unzip -q models.zip",
+            'DISCOTOPE_DEPS_INSTALLED'
+        ).addCommand(
+            f"mkdir -p {weightsCacheDir} && "
+            f"{cls.getEnvActivationCommand(DISCOTOPE_DIC)} && "
+            f"TORCH_HOME={weightsCacheDir} python -c "
+            f"\"from discotope3.esm.pretrained import esm_if1_gvp4_t16_142M_UR50; "
+            f"esm_if1_gvp4_t16_142M_UR50()\"",
+            'DISCOTOPE_WEIGHTS_CACHED'
+        ).addCommand(
+            f'touch {installedMarker}', installedMarker
+        ).addPackage(env, dependencies=['conda', 'git', 'unzip'], default=default)
 
     @classmethod
     def validateInstallation(cls):
@@ -62,27 +92,58 @@ class Plugin(pwchemPlugin):
         actionable error messages, empty if the installation is correct."""
         errors = []
 
-        pythonBin = cls.getVar(DISCOTOPE_DIC['python_bin'])
-        if not pythonBin or not os.path.isfile(pythonBin):
-            errors.append(f"DISCOTOPE_PYTHON_BIN is not set or does not exist: '{pythonBin}'.")
-
         mainScript = cls.getMainScriptPath()
-        if not mainScript or not os.path.isfile(mainScript):
-            errors.append(f"Could not find 'discotope3/main.py' under DISCOTOPE_INSTALL_PATH: '{mainScript}'.")
-
-        modelsDir = cls.getVar(DISCOTOPE_DIC['models_dir'])
-        if not modelsDir or not os.path.isdir(modelsDir):
-            errors.append(f"DISCOTOPE_MODELS_DIR is not set or does not exist: '{modelsDir}'.")
+        modelsDir = cls.getModelsDir()
+        if not os.path.isfile(mainScript):
+            errors.append(f"Could not find 'discotope3/main.py' under DISCOTOPE_HOME: '{cls.getDiscoTopeDir()}'.")
+        elif not os.path.isdir(modelsDir):
+            errors.append(f"Could not find the unzipped 'models/' folder under DISCOTOPE_HOME: '{modelsDir}'.")
+        elif not cls.checkCallEnv(DISCOTOPE_DIC):
+            errors.append("Activation of the DiscoTope-3.0 conda environment failed.")
 
         if errors:
             errors.append(NOINSTALL_WARNING)
         return errors
 
+    @classmethod
+    def checkCallEnv(cls, packageDic):
+        actCommand = cls.getVar(packageDic['activation'])
+        try:
+            if 'conda' in actCommand and 'shell.bash hook' not in actCommand:
+                actCommand = f'{cls.getCondaActivationCmd()}{actCommand}'
+            subprocess.check_output(f'{actCommand} && python -c "import discotope3"', shell=True)
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
     # ---------------------------------- Utils -----------------------------------
 
     @classmethod
+    def getDiscoTopeDir(cls):
+        return cls.getVar(DISCOTOPE_DIC['home'])
+
+    @classmethod
     def getMainScriptPath(cls):
-        installPath = cls.getVar(DISCOTOPE_DIC['install_path'])
-        if not installPath:
-            return None
-        return os.path.join(installPath, 'discotope3', 'main.py')
+        return os.path.join(cls.getDiscoTopeDir(), 'discotope3', 'main.py')
+
+    @classmethod
+    def getModelsDir(cls):
+        return os.path.join(cls.getDiscoTopeDir(), 'models')
+
+    @classmethod
+    def getWeightsCacheDir(cls):
+        return os.path.join(cls.getDiscoTopeDir(), '.torch_cache')
+
+    # ---------------------------------- Protocol functions-----------------------
+
+    @classmethod
+    def runDiscoTope(cls, protocol, args, cwd=None):
+        # runJob's 'env' kwarg expects a pyworkflow Environ object, not a
+        # plain dict (AttributeError: 'dict' object has no attribute
+        # 'getPrepend' otherwise, confirmed by actually running this) --
+        # TORCH_HOME is set on os.environ directly instead, which a
+        # subprocess launched with no explicit 'env' override inherits.
+        os.environ['TORCH_HOME'] = cls.getWeightsCacheDir()
+        activation = cls.getVar(DISCOTOPE_DIC['activation'])
+        fullProgram = f'{activation} && python {cls.getMainScriptPath()}'
+        protocol.runJob(fullProgram, args, cwd=cwd)
