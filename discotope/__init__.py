@@ -61,18 +61,29 @@ class Plugin(pwchemPlugin):
         # the stale 'Python :: 3.9' classifier in its setup.py.
         home = cls.getVar(DISCOTOPE_DIC['home'])
         weightsCacheDir = cls.getWeightsCacheDir()
-        installedMarker = f"{DISCOTOPE_DIC['name']}_installed"
 
         installer = InstallHelper(DISCOTOPE_DIC['name'], packageHome=home,
                                   packageVersion=DISCOTOPE_DIC['version'])
 
-        installer.getCondaEnvCommand(
-            DISCOTOPE_DIC['name'], binaryVersion=DISCOTOPE_DIC['version'], pythonVersion='3.14'
-        ).addCommand(
+        # Clone BEFORE creating the conda env (real bug found+fixed
+        # 2026-07-29 via an actual 'scipion3 installb' run -- see
+        # netcleave/__init__.py::addNetCleavePackage for the full
+        # explanation: 'getCondaEnvCommand' leaves its own completion
+        # marker inside 'home', which then blocks a subsequent 'git clone'
+        # into that same now-nonempty directory).
+        installer.addCommand(
             f"git clone --depth 1 {UPSTREAM_URL} {home}",
             'DISCOTOPE_CLONED'
+        ).getCondaEnvCommand(
+            DISCOTOPE_DIC['name'], binaryVersion=DISCOTOPE_DIC['version'], pythonVersion='3.14'
         ).addCommand(
+            # 'unzip' installed as a conda package INSIDE this env, not
+            # relied upon as a system binary (real bug found+fixed
+            # 2026-07-29 via an actual 'scipion3 installb' run: 'conda
+            # activate' replaces PATH entirely, so a system-wide/other-env
+            # 'unzip' is not visible here even if present elsewhere).
             f"{cls.getEnvActivationCommand(DISCOTOPE_DIC)} && "
+            "conda install -y -c conda-forge unzip && "
             f"cd {home} && pip install -r requirements.txt && pip install . && unzip -q models.zip",
             'DISCOTOPE_DEPS_INSTALLED'
         ).addCommand(
@@ -81,9 +92,7 @@ class Plugin(pwchemPlugin):
             f"TORCH_HOME={weightsCacheDir} python -c "
             f"\"from discotope3.esm.pretrained import esm_if1_gvp4_t16_142M_UR50; "
             f"esm_if1_gvp4_t16_142M_UR50()\"",
-            'DISCOTOPE_WEIGHTS_CACHED'
-        ).addCommand(
-            f'touch {installedMarker}', installedMarker
+            'DISCOTOPE_INSTALLED'
         ).addPackage(env, dependencies=['conda', 'git', 'unzip'], default=default)
 
     @classmethod

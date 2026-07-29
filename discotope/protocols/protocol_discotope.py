@@ -89,7 +89,9 @@ class ProtDiscoTopePrediction(EMProtocol):
                        help='"solved" for experimentally solved structures, "alphafold" for '
                             'AlphaFold-predicted models (affects internal pLDDT handling).')
         form.addParam('timeoutSeconds', params.IntParam, label='Timeout (s): ', default=1800,
-                       expertLevel=params.LEVEL_ADVANCED)
+                       expertLevel=params.LEVEL_ADVANCED,
+                       help='Maximum time the DiscoTope-3.0 run is allowed to take before the step '
+                            'is aborted as failed.')
 
         gGroup = form.addGroup('Epitope mapping')
         gGroup.addParam('threshold', params.FloatParam, default=DEFAULT_THRESHOLD,
@@ -97,10 +99,25 @@ class ProtDiscoTopePrediction(EMProtocol):
                          help='DiscoTope-3.0\'s own published reference: ~0.40 ("low", ~70%% recall), '
                               '~0.90 ("moderate", default), ~1.51 ("higher", lower recall/higher '
                               'precision).')
-        gGroup.addParam('windowSize', params.IntParam, default=9, label='Window size (aa): ')
+        gGroup.addParam('windowSize', params.IntParam, default=9, label='Window size (aa): ',
+                         help='Length (in residues) of the sliding window used to collapse '
+                              'above-threshold residues into contiguous candidate epitope regions.')
         gGroup.addParam('maxGapResidues', params.IntParam, default=2,
-                         label='Max. below-threshold residues per window: ')
-        gGroup.addParam('minLength', params.IntParam, default=9, label='Min. epitope length (aa): ')
+                         label='Max. below-threshold residues per window: ',
+                         help='How many below-threshold residues are tolerated inside a sliding '
+                              'window before it stops extending the current candidate region.')
+        gGroup.addParam('minLength', params.IntParam, default=9, label='Min. epitope length (aa): ',
+                         help='Minimum length (in residues) a mapped region must reach to be kept '
+                              'as a candidate epitope; shorter regions are discarded.')
+
+        # Naming/help text match the pwchem-wide convention for tools that
+        # can only toggle GPU on/off (no device selection) -- see
+        # protocol_scorch2_pose.py::useGPU. DiscoTope-3.0's own CLI only
+        # exposes '--cpu_only' (uses GPU automatically if available and not
+        # set), no GPU-id equivalent, so the USE_GPU+GPU_LIST pair
+        # (protocol_system_simulation.py) does not apply here.
+        form.addParam('useGPU', params.BooleanParam, default=True, label='Use GPU: ',
+                       help='Whether to use GPU or not. (Unable to choose the GPU id).')
 
     def _insertAllSteps(self):
         self._insertFunctionStep(self.discotopeStep)
@@ -123,6 +140,8 @@ class ProtDiscoTopePrediction(EMProtocol):
             f'--struc_type {strucType} '
             f'--models_dir {discotopePlugin.getModelsDir()}'
         )
+        if not self.useGPU.get():
+            args += ' --cpu_only'
         discotopePlugin.runDiscoTope(self, args)
 
         csvFiles = sorted(Path(p) for p in glob.glob(str(resultDir / '**' / '*_discotope3.csv'), recursive=True))
