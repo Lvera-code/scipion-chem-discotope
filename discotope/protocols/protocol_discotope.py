@@ -80,6 +80,12 @@ class ProtDiscoTopePrediction(EMProtocol):
     _label = 'discotope epitope prediction'
 
     def _defineParams(self, form):
+        form.addHidden(params.USE_GPU, params.BooleanParam, default=True,
+                       label='Use GPU: ',
+                       help='Whether to use GPU or not. (Unable to choose the GPU id).')
+        form.addHidden(params.GPU_LIST, params.StringParam, default='0', label='Choose GPU IDs',
+                       help='Add a list of GPU devices that can be used')
+
         form.addSection(label='Input')
         form.addParam('inputStructure', params.PointerParam, pointerClass='AtomStruct',
                        label='Input structure (single chain): ',
@@ -110,15 +116,6 @@ class ProtDiscoTopePrediction(EMProtocol):
                          help='Minimum length (in residues) a mapped region must reach to be kept '
                               'as a candidate epitope; shorter regions are discarded.')
 
-        # Naming/help text match the pwchem-wide convention for tools that
-        # can only toggle GPU on/off (no device selection) -- see
-        # protocol_scorch2_pose.py::useGPU. DiscoTope-3.0's own CLI only
-        # exposes '--cpu_only' (uses GPU automatically if available and not
-        # set), no GPU-id equivalent, so the USE_GPU+GPU_LIST pair
-        # (protocol_system_simulation.py) does not apply here.
-        form.addParam('useGPU', params.BooleanParam, default=True, label='Use GPU: ',
-                       help='Whether to use GPU or not. (Unable to choose the GPU id).')
-
     def _insertAllSteps(self):
         self._insertFunctionStep(self.discotopeStep)
         self._insertFunctionStep(self.createOutputStep)
@@ -140,7 +137,7 @@ class ProtDiscoTopePrediction(EMProtocol):
             f'--struc_type {strucType} '
             f'--models_dir {discotopePlugin.getModelsDir()}'
         )
-        if not self.useGPU.get():
+        if not self.useGpu.get():
             args += ' --cpu_only'
         discotopePlugin.runDiscoTope(self, args)
 
