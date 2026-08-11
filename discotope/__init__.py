@@ -65,8 +65,8 @@ class Plugin(pwchemPlugin):
         installer = InstallHelper(DISCOTOPE_DIC['name'], packageHome=home,
                                   packageVersion=DISCOTOPE_DIC['version'])
 
-        # Clone BEFORE creating the conda env (real bug found+fixed
-        # 2026-07-29 via an actual 'scipion3 installb' run -- see
+        # Clone BEFORE creating the conda env (real bug found+fixed via an
+        # actual 'scipion3 installb' run -- see
         # netcleave/__init__.py::addNetCleavePackage for the full
         # explanation: 'getCondaEnvCommand' leaves its own completion
         # marker inside 'home', which then blocks a subsequent 'git clone'
@@ -78,8 +78,8 @@ class Plugin(pwchemPlugin):
             DISCOTOPE_DIC['name'], binaryVersion=DISCOTOPE_DIC['version'], pythonVersion='3.14'
         ).addCommand(
             # 'unzip' installed as a conda package INSIDE this env, not
-            # relied upon as a system binary (real bug found+fixed
-            # 2026-07-29 via an actual 'scipion3 installb' run: 'conda
+            # relied upon as a system binary (real bug found+fixed via an
+            # actual 'scipion3 installb' run: 'conda
             # activate' replaces PATH entirely, so a system-wide/other-env
             # 'unzip' is not visible here even if present elsewhere).
             f"{cls.getEnvActivationCommand(DISCOTOPE_DIC)} && "

@@ -10,8 +10,7 @@ from ..protocols import ProtDiscoTopePrediction
 # input per run. Same reference structure used by the netmhcpan/scannet
 # test fixtures, not a synthetic one.
 _TEST_PDB_ID = '7c4s'
-# Real bug found+fixed 2026-07-29 via an actual 'scipion3 test' run: mmCIF
-# has TWO independent chain-ID namespaces -- 'label_asym_id' (internal,
+# mmCIF has TWO independent chain-ID namespaces -- 'label_asym_id' (internal,
 # always a clean A/B/C/... sequence) and 'auth_asym_id' (the author's real
 # PDB chain letter, e.g. what everyone means by "chain A" of 7c4s: the
 # antigen, 283 residues). PDBFixer's mmCIF reader keys off label_asym_id
@@ -34,9 +33,9 @@ class TestDiscoTopePrediction(BaseTest):
     # window, max 2 below-threshold residues, min length 9) -- not
     # estimated.
     #
-    # Real debugging story 2026-07-29, worth keeping so it is not repeated:
-    # this exact value is the ORIGINAL reference, pinned back in 2026-07-25
-    # against the OLD bundled 'tests_data/7c4s_chainA.pdb' fixture. When
+    # Debugging note, worth keeping so this is not repeated: this exact
+    # value is the ORIGINAL reference, pinned against the OLD bundled
+    # 'tests_data/7c4s_chainA.pdb' fixture. When
     # this test was rewired to a live RCSB download + ProtChemPrepareReceptor
     # chain isolation (see _TEST_CHAIN comment above) instead of that
     # bundled file, 'usePDBFixer=True' was needed to force real legacy-PDB
@@ -58,11 +57,10 @@ class TestDiscoTopePrediction(BaseTest):
     # residues -- disabling that specific step ('addRes=False' below,
     # keeping the default '--add-atoms=all' which is NOT the
     # nondeterministic part) makes the whole pipeline reproduce the
-    # ORIGINAL 2026-07-25 reference exactly (scores matching to 5+ decimal
+    # ORIGINAL reference exactly (scores matching to 5+ decimal
     # places) AND makes DiscoTope-3.0 itself ~60-80x faster per run (14-23s
     # vs 750-1150s) since it no longer processes PDBFixer's speculative
-    # inserted residues. Confirmed stable across 2 separate real repeat
-    # runs after this fix (identical PASS both times).
+    # inserted residues. Confirmed stable across repeat runs after this fix.
     EXPECTED = (241, 249, 'RVQACPILF')
     EXPECTED_MEAN_SCORE = 1.481464
     EXPECTED_MAX_SCORE = 3.68022
@@ -88,8 +86,7 @@ class TestDiscoTopePrediction(BaseTest):
         # protocol_receptor_preparation.py): only 'model'/'chain' are used
         # to filter, so it is omitted here.
         #
-        # usePDBFixer=True is required here (real bug found 2026-07-29 via
-        # an actual 'scipion3 test' run): ProtImportPdb(pdbId=...) always
+        # usePDBFixer=True is required here: ProtImportPdb(pdbId=...) always
         # downloads mmCIF (pwem's own pdbDownloadStep hardcodes
         # type='mmCif'), and ProtChemPrepareReceptor only normalizes output
         # to real legacy-PDB format when PDBFixer runs -- otherwise it just
@@ -99,8 +96,8 @@ class TestDiscoTopePrediction(BaseTest):
         # produced a genuine 'invalid literal for int(): Y' crash inside
         # Biopython, misreading mmCIF text through PDB column offsets.
         #
-        # addRes=False (real root-cause fix 2026-07-29, after chasing
-        # apparent "instability" across 10 real test runs): PDBFixer's
+        # addRes=False (root-cause fix, after chasing
+        # apparent "instability" across repeated test runs): PDBFixer's
         # '--add-residues' flag (pwchem's own 'addRes' param, default True)
         # does real conformational sampling to place entirely missing
         # loop/terminal residues -- confirmed NOT deterministic (no --seed
@@ -115,7 +112,7 @@ class TestDiscoTopePrediction(BaseTest):
         # already produces valid legacy PDB, so '--add-residues' was
         # providing no benefit for this pipeline's actual purpose, only
         # instability. With it disabled, this test reproduces the ORIGINAL
-        # 2026-07-25 reference exactly (see class docstring) and runs
+        # reference exactly (see class docstring) and runs
         # ~40x faster.
         protPrepareReceptor = cls.newProtocol(
             ProtChemPrepareReceptor,

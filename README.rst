@@ -26,8 +26,8 @@ public, unauthenticated download (``dl.fbaipublicfiles.com``) a first
 protocol run would trigger anyway, just done at install time instead. No
 manual setup or ``scipion.conf`` variables needed.
 
-Output ROIs expose ``_meanScore``/``_maxScore`` (project-wide convention
-formalized 2026-07-24, see ``scipion-chem-epitope-construct``): any
+Output ROIs expose ``_meanScore``/``_maxScore`` (project-wide convention,
+see ``scipion-chem-epitope-construct``): any
 B-cell prediction protocol must expose these so the construct-assembly
 protocol can rank candidates consistently across tools.
 
