@@ -1,9 +1,9 @@
 """Generic gap-tolerant sliding-window epitope region mapping.
 
-Reimplemented (not imported) from the standalone project's
-``epitope_mapping.py`` -- shared logic across its BepiPred-3.0/EpiDope/
-DiscoTope-3.0/ScanNet engines, applied here on DiscoTope-3.0's per-residue
-'calibrated_score' for a single-chain PDB per run.
+Generic gap-tolerant sliding-window mapping logic, shared in principle
+across BepiPred-3.0/EpiDope/DiscoTope-3.0/ScanNet-style per-residue score
+outputs, applied here on DiscoTope-3.0's per-residue 'calibrated_score'
+for a single-chain PDB per run.
 """
 
 from typing import List, Tuple
